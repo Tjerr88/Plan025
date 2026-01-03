@@ -5,99 +5,47 @@
 <title>Strong Endurance 025</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <style>
-:root {
-    --bg: #0f0f0f;
-    --card: #1b1b1b;
-    --text: #ffffff;
-    --muted: #aaaaaa;
-    --accent: #3b82f6;
-    --danger: #ef4444;
-}
-
-* {
-    box-sizing: border-box;
-}
-
 body {
     margin: 0;
     font-family: system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
+    background: #0f0f0f;
+    color: #fff;
 }
-
-.section {
-    padding: 1.2rem;
-}
-
-.hero {
-    text-align: center;
-    padding: 2rem 1rem;
-}
-
-.hero h1 {
-    font-size: 1rem;
-    letter-spacing: 2px;
-    opacity: 0.7;
-}
-
-.hero .big {
-    font-size: 3.5rem;
-    font-weight: 800;
-    margin: 0.5rem 0;
-}
-
-.hero .sub {
-    font-size: 1.1rem;
-    color: var(--muted);
-}
-
+.section { padding: 1rem; }
+.hero { text-align: center; padding: 2rem 1rem; }
+.hero .big { font-size: 3.5rem; font-weight: 800; }
+.hero .sub { opacity: 0.7; }
 .buttons {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 0.5rem;
 }
-
 button {
     padding: 1rem;
     font-size: 1.1rem;
     font-weight: 700;
     border: none;
     border-radius: 10px;
-    color: white;
 }
-
-.low { background: #22c55e; }
-.med { background: #eab308; color: #000; }
-.high { background: #ef4444; }
-
+.high { background:#ef4444; color:#fff; }
+.low { background:#22c55e; }
+.med { background:#eab308; color:#000; }
+.primary { background:#3b82f6; color:#fff; width:100%; }
+.secondary { background:#444; color:#fff; width:100%; margin-top:0.5rem; }
 .card {
-    background: var(--card);
-    border-radius: 12px;
-    padding: 1rem;
-    margin-top: 1rem;
+    background:#1b1b1b;
+    border-radius:12px;
+    padding:1rem;
+    margin-top:1rem;
 }
-
-input {
-    width: 100%;
-    padding: 0.8rem;
-    font-size: 1.2rem;
-    margin-top: 0.5rem;
-    border-radius: 8px;
-    border: none;
-}
-
-.save {
-    background: var(--accent);
-    margin-top: 0.8rem;
-}
-
-.reset {
-    background: #444;
-    margin-top: 1rem;
-}
-
-.hidden {
-    display: none;
+.hidden { display:none; }
+input, select {
+    width:100%;
+    padding:0.6rem;
+    font-size:1rem;
+    margin-top:0.3rem;
+    border-radius:8px;
+    border:none;
 }
 </style>
 </head>
@@ -105,89 +53,124 @@ input {
 <body>
 
 <div class="hero">
-    <h1>TODAY</h1>
-    <div class="big" id="mainDisplay">—</div>
+    <div class="big" id="display">—</div>
     <div class="sub">OTM · STOP AT TALK TEST</div>
 </div>
 
 <div class="section buttons">
-    <button class="low" onclick="setDay('low')">LOW<br>60%</button>
-    <button class="med" onclick="setDay('med')">MED<br>80%</button>
-    <button class="high" onclick="setDay('high')">HIGH<br>100%</button>
-</div>
-
-<div class="section card hidden" id="logCard">
-    <h3>High Day Result</h3>
-    <label>Sets completed</label>
-    <input type="number" id="setsInput" min="1" max="50">
-    <button class="save" onclick="logHigh()">SAVE</button>
-</div>
-
-<div class="section card">
-    <p>Current phase</p>
-    <p><strong><span id="reps"></span> reps per set</strong></p>
-    <p class="sub"><span id="progress"></span></p>
+    <button class="high" onclick="selectDay('high')">HIGH</button>
+    <button class="low" onclick="selectDay('low')">LOW</button>
+    <button class="med" onclick="selectDay('med')">MED</button>
 </div>
 
 <div class="section">
-    <button class="reset" onclick="resetAll()">RESET PLAN</button>
+    <button class="primary" onclick="startTimer()">START</button>
+    <button class="secondary hidden" id="stopBtn" onclick="stopHigh()">STOP</button>
+</div>
+
+<div class="section card">
+    <p><strong>Sets:</strong> <span id="sets">0</span></p>
+    <p><strong>Target:</strong> <span id="target">—</span></p>
+</div>
+
+<div class="section card">
+    <h3>Settings</h3>
+    <label>Reps per set (5–10)</label>
+    <input type="number" id="repsInput" min="5" max="10">
+
+    <label>Kettlebell weight (kg)</label>
+    <input type="number" id="weightInput">
+
+    <label>Exercise</label>
+    <select id="exerciseInput">
+        <option>One-arm Swing</option>
+        <option>Two-arm Swing</option>
+        <option>Snatch</option>
+    </select>
+
+    <button class="secondary" onclick="saveSettings()">Save settings</button>
 </div>
 
 <script>
-const KEY = "SE025_MOBILE";
+const KEY = "SE025_FULL";
 
 let data = JSON.parse(localStorage.getItem(KEY)) || {
     reps: 5,
-    bestSets: 0
+    weight: 24,
+    exercise: "One-arm Swing",
+    highSets: 0
 };
 
-function save() {
+let currentDay = null;
+let sets = 0;
+let timer = null;
+
+function beep() {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    osc.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+}
+
+function selectDay(day) {
+    currentDay = day;
+    sets = 0;
+    updateDisplay();
+    document.getElementById("stopBtn").classList.toggle("hidden", day !== "high");
+}
+
+function startTimer() {
+    if (!currentDay) return;
+    sets = 0;
+    updateDisplay();
+
+    timer = setInterval(() => {
+        beep();
+        sets++;
+        updateDisplay();
+
+        if (currentDay !== "high") {
+            const limit = Math.round(
+                data.highSets * (currentDay === "low" ? 0.6 : 0.8)
+            );
+            if (sets >= limit) stopTimer();
+        }
+    }, 60000);
+}
+
+function stopHigh() {
+    stopTimer();
+    data.highSets = Math.max(data.highSets, sets);
     localStorage.setItem(KEY, JSON.stringify(data));
 }
 
-function setDay(type) {
-    let sets = data.bestSets;
-    if (type === "med") sets = Math.round(sets * 0.8);
-    if (type === "low") sets = Math.round(sets * 0.6);
-
-    document.getElementById("mainDisplay").textContent =
-        `${sets || "—"} × ${data.reps}`;
-
-    document.getElementById("logCard").classList.toggle(
-        "hidden",
-        type !== "high"
-    );
+function stopTimer() {
+    clearInterval(timer);
+    timer = null;
 }
 
-function logHigh() {
-    const val = Number(document.getElementById("setsInput").value);
-    if (!val) return;
-
-    data.bestSets = Math.max(data.bestSets, val);
-
-    if (data.bestSets >= 50) {
-        data.reps++;
-        data.bestSets = 0;
-        alert("Progression reached: reps increased.");
-    }
-
-    save();
-    updateInfo();
+function updateDisplay() {
+    document.getElementById("display").textContent =
+        `${sets} × ${data.reps}`;
+    document.getElementById("sets").textContent = sets;
+    document.getElementById("target").textContent =
+        currentDay === "high"
+            ? "Manual stop"
+            : Math.round(data.highSets * (currentDay === "low" ? 0.6 : 0.8));
 }
 
-function updateInfo() {
-    document.getElementById("reps").textContent = data.reps;
-    document.getElementById("progress").textContent =
-        `${data.bestSets}/50 sets`;
+function saveSettings() {
+    data.reps = Number(repsInput.value);
+    data.weight = Number(weightInput.value);
+    data.exercise = exerciseInput.value;
+    localStorage.setItem(KEY, JSON.stringify(data));
+    updateDisplay();
 }
 
-function resetAll() {
-    if (!confirm("Reset all progress?")) return;
-    localStorage.removeItem(KEY);
-    location.reload();
-}
-
-updateInfo();
+repsInput.value = data.reps;
+weightInput.value = data.weight;
+exerciseInput.value = data.exercise;
 </script>
 
 </body>
