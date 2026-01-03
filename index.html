@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Strong Endurance 025</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+:root {
+    --bg: #0f0f0f;
+    --card: #1b1b1b;
+    --text: #ffffff;
+    --muted: #aaaaaa;
+    --accent: #3b82f6;
+    --danger: #ef4444;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+}
+
+.section {
+    padding: 1.2rem;
+}
+
+.hero {
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.hero h1 {
+    font-size: 1rem;
+    letter-spacing: 2px;
+    opacity: 0.7;
+}
+
+.hero .big {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin: 0.5rem 0;
+}
+
+.hero .sub {
+    font-size: 1.1rem;
+    color: var(--muted);
+}
+
+.buttons {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.5rem;
+}
+
+button {
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    color: white;
+}
+
+.low { background: #22c55e; }
+.med { background: #eab308; color: #000; }
+.high { background: #ef4444; }
+
+.card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+input {
+    width: 100%;
+    padding: 0.8rem;
+    font-size: 1.2rem;
+    margin-top: 0.5rem;
+    border-radius: 8px;
+    border: none;
+}
+
+.save {
+    background: var(--accent);
+    margin-top: 0.8rem;
+}
+
+.reset {
+    background: #444;
+    margin-top: 1rem;
+}
+
+.hidden {
+    display: none;
+}
+</style>
+</head>
+
+<body>
+
+<div class="hero">
+    <h1>TODAY</h1>
+    <div class="big" id="mainDisplay">—</div>
+    <div class="sub">OTM · STOP AT TALK TEST</div>
+</div>
+
+<div class="section buttons">
+    <button class="low" onclick="setDay('low')">LOW<br>60%</button>
+    <button class="med" onclick="setDay('med')">MED<br>80%</button>
+    <button class="high" onclick="setDay('high')">HIGH<br>100%</button>
+</div>
+
+<div class="section card hidden" id="logCard">
+    <h3>High Day Result</h3>
+    <label>Sets completed</label>
+    <input type="number" id="setsInput" min="1" max="50">
+    <button class="save" onclick="logHigh()">SAVE</button>
+</div>
+
+<div class="section card">
+    <p>Current phase</p>
+    <p><strong><span id="reps"></span> reps per set</strong></p>
+    <p class="sub"><span id="progress"></span></p>
+</div>
+
+<div class="section">
+    <button class="reset" onclick="resetAll()">RESET PLAN</button>
+</div>
+
+<script>
+const KEY = "SE025_MOBILE";
+
+let data = JSON.parse(localStorage.getItem(KEY)) || {
+    reps: 5,
+    bestSets: 0
+};
+
+function save() {
+    localStorage.setItem(KEY, JSON.stringify(data));
+}
+
+function setDay(type) {
+    let sets = data.bestSets;
+    if (type === "med") sets = Math.round(sets * 0.8);
+    if (type === "low") sets = Math.round(sets * 0.6);
+
+    document.getElementById("mainDisplay").textContent =
+        `${sets || "—"} × ${data.reps}`;
+
+    document.getElementById("logCard").classList.toggle(
+        "hidden",
+        type !== "high"
+    );
+}
+
+function logHigh() {
+    const val = Number(document.getElementById("setsInput").value);
+    if (!val) return;
+
+    data.bestSets = Math.max(data.bestSets, val);
+
+    if (data.bestSets >= 50) {
+        data.reps++;
+        data.bestSets = 0;
+        alert("Progression reached: reps increased.");
+    }
+
+    save();
+    updateInfo();
+}
+
+function updateInfo() {
+    document.getElementById("reps").textContent = data.reps;
+    document.getElementById("progress").textContent =
+        `${data.bestSets}/50 sets`;
+}
+
+function resetAll() {
+    if (!confirm("Reset all progress?")) return;
+    localStorage.removeItem(KEY);
+    location.reload();
+}
+
+updateInfo();
+</script>
+
+</body>
+</html>
